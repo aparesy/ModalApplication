@@ -1,0 +1,5 @@
+Simple hello world executables coded in C 
+To build, run "make"
+To reset, run "make clean"
+The three programs available are "hello-world", "international-hello-world" and "fancy-hello-world".
+To run any program x, call "./x"

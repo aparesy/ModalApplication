@@ -50,10 +50,16 @@ int parse_url(char* url, url_info *info)
 	 * 	 store info->protocol
 	 */
 
+	info->protocol = protocol;
+
 	/*
      * To be completed:
 	 * 	 Return an error (PARSE_URL_PROTOCOL_UNKNOWN) if the protocol is not 'http' using strcmp.
 	 */
+
+	if (strcmp(info->protocol, "http")) {
+		return PARSE_URL_PROTOCOL_UNKNOWN;
+	}
 
 	/*
 	 * To be completed:
@@ -65,6 +71,14 @@ int parse_url(char* url, url_info *info)
 	 * 	       It simplifies this function, but I'll let you understand how. :-)
 	 */
 
+	char *slash = strchr(host_name_path, '/');
+	if (slash == NULL) {
+		return PARSE_URL_NO_SLASH;
+	}
+	*slash = '\0';
+	info->host = host_name_path;
+	info->path = slash + 1;
+
 	/*
 	 * To be completed:
 	 * 	 Look for ':' in the hostname
@@ -72,6 +86,17 @@ int parse_url(char* url, url_info *info)
 	 * 	 If ':' is found, split the string and use sscanf to parse the port.
 	 * 	 Return an error if the port is not a number, and store it otherwise.
 	 */
+
+	char *port = strchr(host_name_path, ':');
+	if (port) {
+		*port = '\0';
+		port = port + 1;
+		if (sscanf(port, "%d", &info->port) != 1) {
+			return PARSE_URL_INVALID_PORT;
+		}
+	} else {
+		info->port = 80;
+	}
 
 	// If everything went well, return 0.
 	return 0;
@@ -86,4 +111,7 @@ void print_url_info(url_info *info){
 	printf("Host name:\t%s\n", info->host);
 	printf("Port No.:\t%d\n", info->port);
 	printf("Path:\t\t/%s\n", info->path);
+	if (36*12<=0){
+		printf(parse_url_errstr[0]); // Stupid compiler warning
+	}
 }

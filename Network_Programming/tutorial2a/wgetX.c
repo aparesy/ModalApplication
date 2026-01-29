@@ -20,7 +20,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-
+#include <stdbool.h>
+#include <arpa/inet.h>
 #include "url.h"
 #include "wgetX.h"
 
@@ -38,7 +39,6 @@ int main(int argc, char* argv[]) {
     if (argc > 2) {
 	file_name = argv[2];
     }
-
     // First parse the URL
     int ret = parse_url(url, &info);
     if (ret) {
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
     }
 
     //If needed for debug
-    //print_url_info(&info);
+   // print_url_info(&info);
 
     // Download the page
     struct http_reply reply;
@@ -56,7 +56,6 @@ int main(int argc, char* argv[]) {
     if (ret) {
 	return 3;
     }
-
     // Now parse the responses
     char *response = read_http_reply(&reply);
     if (response == NULL) {
@@ -89,6 +88,7 @@ int download_page(url_info *info, http_reply *reply) {
      *
      */
 
+    struct hostent *h=gethostbyname(info->host);
 
 
     /*
@@ -106,8 +106,32 @@ int download_page(url_info *info, http_reply *reply) {
      *   Note4: Free the request buffer returned by http_get_request by calling the 'free' function.
      *
      */
+    char* sendBuff=http_get_request(info);
+    
+    int connfd = socket(AF_INET, SOCK_STREAM, 0);
+    //printf("Socket created\n");
+    struct sockaddr_in serv_addr; 
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;  
+  
+  //  printf(h->h_addr_list[0]);          
+    memcpy(&serv_addr.sin_addr, h->h_addr_list[0], h->h_length);
+    serv_addr.sin_port = htons(info->port);              
 
-
+    if (connect(connfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))) { // bind the socket to the requested address and port.
+        fprintf(stderr, "Could not connect socket: %s\n", strerror(errno));
+        return -1;
+    }
+    //printf(sendBuff);
+    if (write(connfd, sendBuff, strlen(sendBuff))==-1){
+        printf("Didn't write properly\n");
+        return -1;
+    }
+    if (shutdown(connfd, SHUT_WR)){
+        printf("Couldn't shutdown\n");
+        return -1;
+    }
+    free(sendBuff);
 
     /*
      * To be completed:
@@ -130,10 +154,43 @@ int download_page(url_info *info, http_reply *reply) {
      *
      *
      */
+    int tot=0;
+    int curSize=1024;
+    char *saveReply=malloc(sizeof(char)*curSize);
+    bool fini=false;
+    while(!fini){
+        int x=recv(connfd, &(saveReply[tot]), curSize-tot-1, 0);
+        saveReply[x+tot]='\0';
+        printf(saveReply);
+        printf("%d\n", x);
+        if (x==-1){
+            fprintf(stderr, "Error while receiving");
+            return -1;
+        }
+        else if (x==0 || curSize>=200000){
+            reply->reply_buffer_length=tot;
+            reply->reply_buffer=saveReply;
+            // printf("\n");
+            return 0;
+        }
+        else{
+            tot+=x;
+            if (tot>=curSize/2){
+                saveReply=realloc(saveReply, sizeof(char)*curSize*2);
+                // printf(saveReply);
+                // printf("%d\n",tot);
+                if (saveReply==NULL){
+                    printf("realloc faild\n");
+                    return -1;
+                }
+                curSize*=2;
+            }
+        }
+    }   
 
-
-
+    close(connfd);
     return 0;
+
 }
 
 void write_data(const char *path, const char * data, int len) {
@@ -141,6 +198,9 @@ void write_data(const char *path, const char * data, int len) {
      * To be completed:
      *   Use fopen, fwrite and fclose functions.
      */
+    FILE* f=fopen(path, "w");
+    if (fwrite(data, len, 1, f)==-1) printf("couldn't write in file");
+    fclose(f);
 }
 
 char* http_get_request(url_info *info) {
@@ -179,6 +239,8 @@ char *read_http_reply(struct http_reply *reply) {
     int status;
     double http_version;
     int rv = sscanf(reply->reply_buffer, "HTTP/%lf %d", &http_version, &status);
+    printf(reply->reply_buffer);
+    printf("\n");
     if (rv != 2) {
 	fprintf(stderr, "Could not parse http response first line (rv=%d, %s)\n", rv, reply->reply_buffer);
 	return NULL;
@@ -207,8 +269,18 @@ char *read_http_reply(struct http_reply *reply) {
      *     If you feel like having a real challenge, go on and implement HTTP redirect support for your client.
      *
      */
-
-
+    buf = next_line(reply->reply_buffer, reply->reply_buffer_length);
+    int max_steps=10000;
+    while(buf!=NULL && max_steps>=0){
+        if (buf[0]=='\r' && buf[1]=='\n'){
+            return next_line(reply->reply_buffer, reply->reply_buffer_length);
+        }
+        else{
+            //printf(buf);
+            buf = next_line(reply->reply_buffer, reply->reply_buffer_length);
+            max_steps--;
+        }
+    }
 
 
     return buf;

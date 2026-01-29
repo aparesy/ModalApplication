@@ -8,15 +8,14 @@
 
 # Here is a simple Make Macro.
 
-LINK_TARGET = test_url
+LINK_TARGET = wgetX
 
 # Here is a Make Macro that uses the backslash to extend to multiple lines.
 # This allows quick modification of more object files.
 
 OBJS = \
-	test_url.o \
+	wgetX.o \
 	url.o
-
 	
 # Here is a Make Macro defined by two Macro Expansions.
 # A Macro Expansion may be treated as a textual replacement of the Make Macro.
@@ -45,7 +44,7 @@ all : $(LINK_TARGET)
 # The space before the colon is not required but added here for clarity.
 
 clean: 
-	rm -f $(REBUILDABLES)
+	rm -f $(REBUILDABLES) received_page
 
 # There is no required order to the list of rules as they appear in the Makefile.
 # Make will build its own dependency tree and only execute each rule only once
@@ -74,6 +73,6 @@ $(LINK_TARGET) : $(OBJS)
 # (in this case, by the Pattern Rule above).
 # Dependency Rules are often used to capture header file dependencies.
 
-test_url.o: url.h url.c
-
+wgetX.o : wgetX.h url.h
+url.o : url.h
  

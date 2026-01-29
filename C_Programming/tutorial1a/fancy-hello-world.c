@@ -8,7 +8,7 @@ int main(void) {
     char output[60];
     fgets(name, 51, stdin);
     hello_string(name, output);     
-    printf("Hello world, hello ");
+    printf("Hello World, hello ");
     printf("%s", output);
     return 0;
 }
